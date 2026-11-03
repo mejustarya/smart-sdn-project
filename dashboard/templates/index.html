@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smart SDN | Network Operations</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-icon">S</div><div><b>SMART SDN</b><small>NETWORK OPERATIONS</small></div></div>
+    <div class="nav-label">MONITORING</div>
+    <a class="nav active" href="#overview">▦ &nbsp; Overview</a>
+    <a class="nav" href="#topology">⌁ &nbsp; Network topology</a>
+    <a class="nav" href="#experiments">◷ &nbsp; Experiments</a>
+    <a class="nav" href="#analytics">∿ &nbsp; Analytics</a>
+    <a class="nav" href="#reports">▤ &nbsp; Reports</a>
+    <div class="side-bottom"><span class="pulse"></span><span>Local controller</span><b id="connection">Checking</b></div>
+  </aside>
+  <main class="main">
+    <header id="overview"><div><div class="eyebrow">SDN CONTROL PLANE / LIVE VIEW</div><h1>Network overview</h1><p>Monitor traffic, congestion and adaptive synchronization routing.</p></div><div class="header-right"><span class="live-dot"></span> LIVE <span id="clock">--:--:--</span></div></header>
+
+    <section class="metrics">
+      <article class="metric"><span>ACTIVE SWITCHES</span><strong id="switchCount">0 / 2</strong><small>OpenFlow connections</small></article>
+      <article class="metric"><span>SELECTED SYNC PATH</span><strong id="path" class="path slow">SLOW</strong><small id="pathDesc">5 Mbps · 50 ms</small></article>
+      <article class="metric"><span>SLOW LINK RATE</span><strong><i id="rate">0.000</i> <em>Mbps</em></strong><small>Measured egress throughput</small></article>
+      <article class="metric"><span>CONGESTION POLICY</span><strong id="policy">DYNAMIC</strong><small>Reroute at <b id="highThreshold">2.5</b> Mbps</small></article>
+    </section>
+    <section class="metrics">
+      <article class="metric"><span>SYNC RTT</span><strong><i id="mRtt">—</i> <em>ms</em></strong><small>Mean of last sample</small></article>
+      <article class="metric"><span>JITTER</span><strong><i id="mJitter">—</i> <em>ms</em></strong><small>Mean RTT variation</small></article>
+      <article class="metric"><span>PACKET LOSS</span><strong><i id="mLoss">—</i> <em>%</em></strong><small>Sync request timeouts</small></article>
+      <article class="metric"><span>SYNC ACCURACY</span><strong><i id="mErr">—</i> <em>ms</em></strong><small>Post-correction error</small></article>
+    </section>
+
+    <section class="grid" id="topology">
+      <article class="panel topology-panel"><div class="panel-head"><div><h2>Network topology</h2><p>Link colour = utilisation · animated link = active traffic</p></div><span class="tag" id="topoTag">LIVE VIEW</span></div>
+        <svg id="topo" viewBox="0 0 820 270" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Network topology">
+          <g class="tn"><rect x="14" y="30" width="140" height="64" rx="10" class="box sync"/><text x="84" y="58" class="t1">h1 · h2 · h3</text><text x="84" y="76" class="t2">SYNC CLIENTS · UDP 5005</text></g>
+          <g class="tn"><rect x="14" y="170" width="140" height="64" rx="10" class="box bg"/><text x="84" y="198" class="t1">h5 · h6 · h7</text><text x="84" y="216" class="t2">TRAFFIC GENERATORS</text></g>
+          <line x1="154" y1="62" x2="262" y2="118" class="lk base"/><line x1="154" y1="202" x2="262" y2="152" class="lk base"/>
+          <g class="tn"><rect x="262" y="98" width="86" height="74" rx="10" class="box sw"/><text x="305" y="132" class="t1">s1</text><text x="305" y="150" class="t2">DPID 1</text></g>
+          <path id="slowLink" d="M348,116 C410,58 500,58 562,116" class="lk idle" fill="none"/>
+          <path id="fastLink" d="M348,154 C410,212 500,212 562,154" class="lk idle" fill="none"/>
+          <text x="455" y="56" class="t2 c" id="slowLabel">SLOW · 5 Mbps · 50 ms</text>
+          <text x="455" y="228" class="t2 c" id="fastLabel">FAST · 20 Mbps · 5 ms</text>
+          <text x="455" y="74" class="t3 c" id="slowActive" style="display:none">▶ ACTIVE SYNC PATH</text>
+          <text x="455" y="212" class="t3 c" id="fastActive" style="display:none">▶ ACTIVE SYNC PATH</text>
+          <g class="tn"><rect x="562" y="98" width="86" height="74" rx="10" class="box sw"/><text x="605" y="132" class="t1">s2</text><text x="605" y="150" class="t2">DPID 2</text></g>
+          <line x1="648" y1="135" x2="716" y2="135" class="lk base"/>
+          <g class="tn"><rect x="716" y="103" width="92" height="64" rx="10" class="box srv"/><text x="762" y="131" class="t1">h4</text><text x="762" y="149" class="t2">TIME SERVER</text></g>
+        </svg>
+        <div class="legend"><span><i class="u-ok"></i> Low utilisation</span><span><i class="u-warn"></i> Moderate</span><span><i class="u-hot"></i> Congested</span><span><i class="legend-fast"></i> Fast path active</span><span><i class="legend-bg"></i> Background UDP 6000</span><span><i class="legend-sync"></i> Sync UDP 5005</span></div>
+      </article>
+
+      <article class="panel controls"><div class="panel-head"><div><h2>Manual controls</h2><p>Trigger traffic and link conditions in Mininet</p></div></div>
+        <label for="duration">Duration (seconds)</label><input id="duration" type="number" min="5" max="3600" value="120">
+        <div class="scenario-grid"><button data-level="low">LOW<small>1.5 Mbps total</small></button><button data-level="moderate">MODERATE<small>3 Mbps total</small></button><button data-level="high">HIGH<small>6 Mbps total</small></button><button data-level="extreme" class="extreme">EXTREME<small>9 Mbps total</small></button></div>
+        <div class="button-row"><button id="tcpBtn">TCP FLOWS (iperf3)</button><button id="burstBtn">BURST TRAFFIC</button></div>
+        <div class="button-row"><button id="stopBtn" class="stop">■ Stop traffic</button><button id="syncBtn" class="sync">▶ Start sync</button></div>
+        <div class="sub">Slow-link conditions (s1 ↔ s2)</div>
+        <div class="trio"><div><label for="nDelay">Delay ms</label><input id="nDelay" type="number" min="0" max="500" value="50"></div><div><label for="nJitter">Jitter ms</label><input id="nJitter" type="number" min="0" max="200" value="0"></div><div><label for="nLoss">Loss %</label><input id="nLoss" type="number" min="0" max="30" step="0.5" value="0"></div></div>
+        <div class="button-row"><button id="netemBtn">Apply</button><button id="netemReset">Reset to 50 ms / 0 %</button></div>
+        <div id="actionMessage" class="message">Waiting for Mininet control connection.</div>
+      </article>
+    </section>
+
+    <section class="panel" id="experiments" style="margin-bottom:14px">
+      <div class="panel-head"><div><h2>Experiment manager</h2><p>Automatic run: baseline → congestion levels → recovery. Results are stored and exportable.</p></div><span class="tag" id="expTag">IDLE</span></div>
+      <div class="exp-form">
+        <div><label for="expName">Experiment name</label><input id="expName" type="text" placeholder="e.g. Demo run 1"></div>
+        <div><label for="expMode">Mode</label><select id="expMode"><option value="auto">Full automatic (all levels)</option><option value="single">Single level</option></select></div>
+        <div id="levelWrap" style="display:none"><label for="expLevel">Level</label><select id="expLevel"><option>low</option><option>moderate</option><option selected>high</option><option>extreme</option></select></div>
+        <div><label for="expStage">Seconds per stage</label><input id="expStage" type="number" min="15" max="120" value="40"></div>
+        <div class="checks" id="autoOpts"><label><input type="checkbox" id="expTcp"> + TCP stage</label><label><input type="checkbox" id="expBurst"> + Burst stage</label></div>
+        <div class="exp-buttons"><button id="expStart" class="sync">▶ Start experiment</button><button id="expStop" class="stop">■ Stop</button></div>
+      </div>
+      <div class="progress"><div id="expBar"></div></div>
+      <div id="phases" class="phases"></div>
+      <div id="expMessage" class="message">No experiment running.</div>
+    </section>
+
+    <section class="grid even" id="analytics">
+      <article class="panel chart-panel"><div class="panel-head"><div><h2>Slow-link throughput</h2><p>Controller sampled rate · Mbps · dashed = reroute threshold</p></div><span class="tag">AUTO REFRESH · 2S</span></div><div class="chart-wrap"><canvas id="rateChart"></canvas></div></article>
+      <article class="panel chart-panel"><div class="panel-head"><div><h2>Synchronization RTT</h2><p>From UDP sync clients · colour = path in use</p></div><span class="tag">ms</span></div><div class="chart-wrap"><canvas id="rttChart"></canvas></div></article>
+    </section>
+
+    <section class="panel" id="reports" style="margin-bottom:14px">
+      <div class="panel-head"><div><h2>Experiment history &amp; reports</h2><p>Every automatic run is stored in SQLite. Download CSV data or a PDF report.</p></div><a class="tag" href="/api/runs.csv">ALL RUNS CSV</a></div>
+      <div class="table-wrap"><table id="runsTable"><thead><tr><th>#</th><th>Name</th><th>Started</th><th>Length</th><th>Status</th><th>Route changes</th><th>RTT slow → fast</th><th>Loss</th><th>Export</th></tr></thead><tbody><tr><td colspan="9" class="empty">No experiments yet.</td></tr></tbody></table></div>
+    </section>
+
+    <section class="grid lower">
+      <article class="panel port-panel"><div class="panel-head"><div><h2>Switch port counters</h2><p>Open vSwitch byte counters</p></div></div><div id="ports" class="ports">Waiting for OVS statistics…</div></article>
+      <article class="panel log-panel"><div class="panel-head"><div><h2>Controller event log</h2><p>Latest Ryu messages and routing decisions</p></div><span class="tag">RYU</span></div><pre id="logs">Waiting for controller log…</pre></article>
+    </section>
+    <footer>SMART SDN NETWORK MANAGEMENT SYSTEM <span>Single Ubuntu VM · Ryu + Mininet + Open vSwitch</span></footer>
+  </main>
+</div>
+<script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+</body></html>

@@ -1,0 +1,7 @@
+logs/
+results/experiments.db
+time_server
+time_client
+background_sender
+__pycache__/
+*.pyc
