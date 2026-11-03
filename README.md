@@ -31,41 +31,13 @@ A software-defined networking (SDN) project that keeps time synchronization accu
 ---
 
 ## 3. Architecture / Design
+<img width="1600" height="1100" alt="image" src="https://github.com/user-attachments/assets/599e5cfc-312c-48ac-8507-205ffefa4288" />
 
-```
-                 +------------------------------------------+
-                 |        Flask Dashboard  (port 5000)      |
-                 |  UI (HTML/JS/Chart.js) + REST API        |
-                 |  SQLite history, CSV + PDF (reportlab)   |
-                 +----+----------------------+--------------+
-                      | control socket       | reads logs / status
-                      | 127.0.0.1:8765       | (controller.log, *-sync.csv,
-                      v                      |  ovs-ofctl port stats)
-        +-------------------------+          |
-        |   Mininet topology      |          |
-        |   (network_topology.py) |          |
-        |  starts/stops traffic,  |          |
-        |  applies tc delay/loss  |          |
-        +-----------+-------------+          |
-                    | OpenFlow 1.3 (port 6633)
-                    v                        v
-             +---------------------------------------+
-             |     Ryu Controller (sdn_controller.py)|
-             |  stats polling -> slow-link rate      |
-             |  policy: dynamic path selection       |
-             +---------------------------------------+
-```
+
 
 **Network topology (inside Mininet)**
+<img width="1600" height="1050" alt="image" src="https://github.com/user-attachments/assets/92625e6e-e3e7-415a-a900-9c751b73a7f5" />
 
-```
- h1,h2,h3 (sync clients) --- s1 ===== FAST link ===== s2 --- h4 (time server)
-                              \                      /
-                               ==== SLOW link =======
-                                  (s1-eth5 <-> s2-eth2, limited bw + delay)
-
- h5,h6,h7 (background traffic generators) feed the slow path to create congestion
-```
 
 **Control loop**
 
