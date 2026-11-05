@@ -27,9 +27,10 @@ This repository contains the C socket-programming application, the Mininet topol
 - [13. Monitoring, logs and reports](#13-monitoring-logs-and-reports)
 - [14. Performance evaluation](#14-performance-evaluation)
 - [15. Screenshots and demonstration video](#15-screenshots-and-demonstration-video)
-- [16. Team contributions](#16-team-contributions)
-- [17. Known limitations and future improvements](#17-known-limitations-and-future-improvements)
-- [18. Mapping to the project evaluation rubric](#18-mapping-to-the-project-evaluation-rubric)
+- [16. Experiment Results and PDF Reports](#16-experiment-results-and-pdf-reports)
+- [17. Team contributions](#17-team-contributions)
+- [18. Known limitations and future improvements](#18-known-limitations-and-future-improvements)
+- [19. Mapping to the project evaluation rubric](#19-mapping-to-the-project-evaluation-rubric)
 
 ---
 
@@ -251,7 +252,6 @@ export MONITOR_INTERVAL=2
 ./scripts/start_controller.sh
 ```
 
-Use `SYNC_POLICY=static` to disable dynamic utilisation-based path switching for a static-policy comparison. Confirm the active policy in the controller log/dashboard before recording a comparison run.
 
 ## 7. Socket application and message flow
 
@@ -625,31 +625,38 @@ Logs, generated executables and the experiment database are runtime artefacts an
 
 The project is intended to evaluate how adaptive routing behaves as offered load on the slow path increases.
 
-### Metrics
+## Performance Metrics
 
-| Metric | Meaning | Source |
+
+| Metric | Description | Data Source |
 |---|---|---|
-| Slow-link throughput (Mbps) | Estimated egress rate on the constrained link | Ryu port statistics |
-| RTT (ms) | Round-trip time for a synchronization exchange, excluding server processing time as calculated by the client | UDP synchronization client |
-| Jitter (ms) | Difference between consecutive RTT samples, aggregated by the dashboard | Dashboard collector |
-| Timeout-derived loss (%) | Percentage of synchronization attempts that time out in the collected samples | Dashboard collector |
-| Synchronization error (ms) | Client-side offset-estimation error fields recorded by the client | UDP synchronization client |
-| Route changes | Number and details of SLOW/FAST transitions | Ryu controller telemetry and experiment store |
+| Slow-Link Throughput (Mbps) | Measures the amount of data transmitted through the slow network path per second. | Ryu Port Statistics |
+| Round-Trip Time (RTT) (ms) | Measures the time taken for a synchronization request to reach the server and the response to return to the client. | UDP Synchronization Client |
+| Jitter (ms) | Measures variations in RTT between consecutive synchronization requests. | Dashboard Collector |
+| Timeout-Based Packet Loss (%) | Measures the percentage of synchronization requests that do not receive a response within the specified time. | Dashboard Collector |
+| Synchronization Error (ms) | Measures the difference between the estimated clock offset and the actual clock offset. | UDP Synchronization Client |
+| Route Changes | Records the number of times traffic switches between the SLOW and FAST network paths. | Ryu Controller and Experiment Store |
 
-### Recommended comparison procedure
+## Experimental Procedure
 
-For a fair evaluation, keep the topology and test duration consistent between runs:
+The following procedure is recommended to evaluate the performance of the proposed adaptive routing system under different network conditions.
 
-1. Run a baseline with background traffic stopped.
-2. Run the same synchronization workload while generating Low, Moderate, High and Extreme UDP traffic.
-3. Record when the controller changes the path and how long it remains on each path.
-4. Run TCP and burst tests as additional challenging scenarios.
-5. Apply delay/jitter/loss to the slow path and record the observed synchronization behaviour.
-6. Run a static-policy comparison using `SYNC_POLICY=static`, then repeat the same traffic profile and duration.
-7. Compare throughput, RTT, jitter, timeout-derived loss, synchronization error and route-change events.
-8. Export the CSV and PDF reports and include the actual measured values in the presentation.
+1. **Baseline Testing:** Run the network without background traffic to measure its normal performance.
 
-**Important:** Do not insert assumed or illustrative values as measured project results. The final report and presentation should use values collected from your own experiment runs. The PDF report can show `n/a` where a run did not collect enough data for a metric.
+2. **Traffic Load Testing:** Generate different levels of background UDP traffic (Low, Moderate, High, and Extreme) while maintaining the same synchronization workload.
+
+3. **Adaptive Routing Monitoring:** Observe when the SDN controller switches traffic between the SLOW and FAST paths. Record the number of route changes and the time spent on each path.
+
+4. **TCP and Burst Traffic Testing:** Perform additional experiments using TCP traffic and burst traffic to study network behaviour under different traffic patterns. Burst traffic consists of periods of active traffic generation followed by idle periods.
+
+5. **Network Condition Testing:** Introduce additional delay, jitter, and packet loss on the slow path to evaluate their effects on synchronization performance.
+
+6. **Static Routing Comparison:** Run the same experiments using the static routing policy (`SYNC_POLICY=static`) and compare the results with adaptive routing (`SYNC_POLICY=dynamic`).
+
+7. **Performance Comparison:** Compare the collected results using throughput, RTT, jitter, timeout-based packet loss, synchronization error, and route changes.
+
+8. **Result Collection:** Export the experimental results as CSV files and PDF reports.
+
 
 ## ## 15. Screenshots and Demonstration Video
 
