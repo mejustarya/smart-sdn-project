@@ -1,0 +1,12 @@
+policy,scenario,t,path,rate_mbps
+dynamic,moderate,1.736302375793457,FAST,2.5707
+dynamic+prio,moderate,2.8325612545013428,FAST,3.1325
+dynamic,high,1.3513476848602295,FAST,3.1077
+dynamic+prio,high,2.331770181655884,FAST,5.001
+dynamic,extreme,2.5077290534973145,FAST,5.003
+dynamic+prio,extreme,1.4900927543640137,FAST,3.456
+dynamic,burst,1.6752653121948242,FAST,3.9328
+dynamic,burst,13.67951488494873,SLOW,0.0
+dynamic+prio,burst,2.5444023609161377,FAST,5.0028
+dynamic+prio,burst,6.546474456787109,SLOW,0.0
+dynamic+prio,burst,10.548762559890747,FAST,5.0033

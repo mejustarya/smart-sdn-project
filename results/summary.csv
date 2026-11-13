@@ -1,0 +1,4 @@
+scenario,clients,probes,loss_%,mean_delay_ms,mean_raw_err_ms,p95_raw_err_ms,max_raw_err_ms,mean_synced_err_ms,max_synced_err_ms,bg_dropped,sync_dropped
+baseline (no congestion),5,150,0.0,46.8,0.87,2.21,2.57,0.32,1.14,0,0
+congestion + FIFO,5,150,0.0,446.94,200.54,203.03,205.11,198.34,199.76,1624,0
+congestion + priority,5,150,0.0,51.13,2.93,5.37,6.47,1.97,3.19,686,0

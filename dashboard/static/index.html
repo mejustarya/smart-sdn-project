@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Time Sync Lab</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%232a78d6' stroke-width='3'/%3E%3Cpath d='M16 8v8l5 3' fill='none' stroke='%232a78d6' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="page">
+
+  <header class="head">
+    <div class="brand">
+      <svg width="38" height="38" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="none" stroke="var(--c1)" stroke-width="2.6"/><path d="M16 8v8l5 3" fill="none" stroke="var(--ink)" stroke-width="2.6" stroke-linecap="round"/></svg>
+      <div>
+        <h1>Time Sync Lab</h1>
+        <p>Mini NTP over UDP, on Mininet, Open vSwitch and a Ryu controller</p>
+      </div>
+    </div>
+    <span class="pill" id="labPill" data-state="offline"><span class="dot"></span><span id="labText">Lab is off</span></span>
+    <button class="iconbtn" id="themeBtn" type="button" aria-label="Switch between light and dark theme" title="Light / dark">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
+    </button>
+  </header>
+
+  <section class="panel controls" aria-label="Experiment controls">
+    <div class="ctrl-row">
+      <div class="field">
+        <span class="lab" id="scenLab">Background traffic</span>
+        <div class="seg" id="scen" role="group" aria-labelledby="scenLab"></div>
+      </div>
+      <div class="field">
+        <span class="lab" id="polLab">Network policy</span>
+        <div class="seg" id="pol" role="group" aria-labelledby="polLab"></div>
+      </div>
+      <div class="field">
+        <label for="dur">Run length</label>
+        <select id="dur"><option value="15">15 seconds</option><option value="20" selected>20 seconds</option><option value="30">30 seconds</option><option value="45">45 seconds</option></select>
+      </div>
+      <div class="actions">
+        <button class="btn" id="btnLab" type="button">Start lab</button>
+        <button class="btn primary" id="btnRun" type="button" disabled>Run experiment</button>
+        <button class="btn" id="btnMatrix" type="button" disabled>Compare all policies</button>
+        <button class="btn danger" id="btnAbort" type="button" hidden>Stop run</button>
+      </div>
+    </div>
+    <p class="hint" id="hint"></p>
+    <div class="banner" id="banner" role="status"><span id="bannerText"></span><span class="bar"><i id="bannerBar"></i></span></div>
+  </section>
+
+  <div class="tabs" role="tablist" aria-label="Views">
+    <button role="tab" id="tab-live" aria-selected="true" aria-controls="p-live" type="button">Live run</button>
+    <button role="tab" id="tab-cmp" aria-selected="false" aria-controls="p-cmp" type="button">Compare policies</button>
+    <button role="tab" id="tab-how" aria-selected="false" aria-controls="p-how" type="button">How the mini NTP works</button>
+  </div>
+
+  <!-- ================= LIVE ================= -->
+  <main class="tabpanel" id="p-live" role="tabpanel" aria-labelledby="tab-live">
+    <div class="grid">
+      <section class="panel pad span-7" aria-labelledby="h-clk">
+        <div class="ptitle"><h2 id="h-clk">Clocks</h2><span class="sub">Each client starts with a wrong clock and corrects it against the server</span></div>
+        <div class="status-line" id="syncStatus" data-tone="idle"><span class="badge" id="syncBadge">Idle</span><span id="syncText">Start the lab, then run an experiment.</span></div>
+        <div class="wall" id="wall"></div>
+      </section>
+
+      <section class="panel pad span-5" aria-labelledby="h-lad">
+        <div class="ptitle"><h2 id="h-lad">One exchange, step by step</h2><span class="right tabs-mini" id="ladderTabs"></span></div>
+        <svg class="ladder" id="ladder" viewBox="0 0 400 236" role="img" aria-label="Timestamp exchange between the selected client and the server"></svg>
+        <ul class="maths" id="maths"></ul>
+      </section>
+
+      <section class="panel span-12 kpis" id="kpis" aria-label="Key numbers"></section>
+
+      <section class="panel pad span-7" aria-labelledby="h-err">
+        <div class="ptitle"><h2 id="h-err">Clock error of each client</h2><span class="sub">Log scale, lower is better</span></div>
+        <div class="legend" id="legErr"></div>
+        <div class="chartwrap tall"><canvas id="chErr" role="img" aria-label="Clock error over time for each client"></canvas></div>
+        <p class="note">Each line starts at the clock's starting error and drops when the first reply arrives. Shaded bands show the time sync traffic was on the fast path.</p>
+      </section>
+
+      <section class="panel pad span-5" aria-labelledby="h-rtt">
+        <div class="ptitle"><h2 id="h-rtt">Round-trip delay</h2><span class="sub">Milliseconds per probe</span></div>
+        <div class="legend" id="legRtt"></div>
+        <div class="chartwrap tall"><canvas id="chRtt" role="img" aria-label="Round-trip delay over time"></canvas></div>
+        <p class="note">An × at the bottom marks a probe that got no reply.</p>
+      </section>
+
+      <section class="panel pad span-7" aria-labelledby="h-thr">
+        <div class="ptitle"><h2 id="h-thr">Link load</h2><span class="sub">What the Ryu controller sees on each path, in Mbps</span></div>
+        <div class="legend" id="legThr"></div>
+        <div class="chartwrap"><canvas id="chThr" role="img" aria-label="Throughput on the slow and fast links over time"></canvas></div>
+      </section>
+
+      <section class="panel pad span-5" aria-labelledby="h-top">
+        <div class="ptitle"><h2 id="h-top">Network</h2><span class="sub" id="topoSub">Sync traffic is on the slow path</span></div>
+        <svg class="topo" id="topo" viewBox="0 0 420 262" role="img" aria-label="Network diagram: clients, two switches with a slow and a fast link, and the server"></svg>
+        <div class="qline"><span>Slow link load</span><span id="gLoadTxt">0 of 5 Mbps</span></div>
+        <div class="gauge"><i id="gLoad"></i></div>
+        <div class="qline"><span>Queue on slow link</span><span id="gQTxt">0 of 60 packets</span></div>
+        <div class="gauge"><i id="gQ"></i></div>
+      </section>
+
+      <section class="panel pad span-5" aria-labelledby="h-log">
+        <div class="ptitle"><h2 id="h-log">Events</h2></div>
+        <ul class="feed" id="feed" aria-live="off"><li><span class="t"></span><span class="mk"></span><span>Nothing yet.</span></li></ul>
+      </section>
+
+      <section class="panel pad span-7" aria-labelledby="h-tab">
+        <div class="ptitle"><h2 id="h-tab">Latest probes</h2><span class="sub">Every row is one request and reply</span>
+          <a class="linkbtn right" href="/api/export/last_run.csv" download>Download this run as CSV</a></div>
+        <div class="scroll"><table class="data" id="probeTable"><thead><tr>
+          <th>Time</th><th>Client</th><th class="num">Delay (ms)</th><th class="num">Offset estimate (ms)</th><th class="num">Error after step (ms)</th></tr></thead><tbody></tbody></table></div>
+      </section>
+    </div>
+  </main>
+
+  <!-- ================= COMPARE ================= -->
+  <section class="tabpanel" id="p-cmp" role="tabpanel" aria-labelledby="tab-cmp" hidden>
+    <div class="grid">
+      <section class="panel pad span-12">
+        <div class="ptitle"><h2>Four policies across six traffic levels</h2><span class="sub" id="cmpSource"></span>
+          <span class="right"><a class="linkbtn" href="/api/export/matrix.csv" download>Download comparison CSV</a></span></div>
+        <div class="legend" id="legCmp"></div>
+        <p class="note" style="margin:0 0 10px">Static keeps sync traffic on the slow path. Dynamic lets Ryu move it to the fast path when the slow link fills up. Priority puts sync packets first in the queue.</p>
+      </section>
+      <section class="panel pad span-6"><div class="ptitle"><h2>Clock error after settling</h2><span class="sub">ms, log scale</span></div><div class="chartwrap tall"><canvas id="chCmpErr" role="img" aria-label="Clock error by scenario and policy"></canvas></div></section>
+      <section class="panel pad span-6"><div class="ptitle"><h2>Mean round-trip delay</h2><span class="sub">ms</span></div><div class="chartwrap tall"><canvas id="chCmpRtt" role="img" aria-label="Round-trip delay by scenario and policy"></canvas></div></section>
+      <section class="panel pad span-12"><div class="ptitle"><h2>Comparison table</h2></div><div class="scroll" style="max-height:420px"><table class="data" id="cmpTable"></table></div></section>
+      <section class="panel pad span-12"><div class="ptitle"><h2>Runs from this session</h2><a class="linkbtn right" href="/api/export/history.csv" download>Download history CSV</a></div><div class="scroll"><table class="data" id="histTable"></table></div></section>
+    </div>
+  </section>
+
+  <!-- ================= HOW ================= -->
+  <section class="tabpanel" id="p-how" role="tabpanel" aria-labelledby="tab-how" hidden>
+    <div class="grid">
+      <section class="panel pad span-6 prose">
+        <h2 style="margin:0 0 8px;font-size:18px">The idea in four timestamps</h2>
+        <p>A client cannot know how wrong its clock is by looking at it. So it asks the server, and notes four times.</p>
+        <ol class="steps">
+          <li><b>t1</b>: the client sends a request and writes down its own clock.</li>
+          <li><b>t2</b>: the server receives it and writes down its clock.</li>
+          <li><b>t3</b>: the server sends the reply and writes down its clock.</li>
+          <li><b>t4</b>: the client receives the reply and writes down its own clock.</li>
+        </ol>
+        <h3>Round-trip delay</h3>
+        <p>Total time on the wire, without the time the server spent thinking.</p>
+        <code class="formula">delay = (t4 − t1) − (t3 − t2)</code>
+        <h3>Clock offset</h3>
+        <p>Assume the request and the reply took equally long. Then the offset is the average of the two one-way differences.</p>
+        <code class="formula">offset = ((t2 − t1) + (t3 − t4)) / 2</code>
+        <p>The client adds this offset to its clock and is now close to the server.</p>
+        <h3>Why congestion hurts</h3>
+        <p>The equal-delay assumption breaks when one direction waits in a long queue. The leftover error is half the difference between the two directions.</p>
+        <code class="formula">error = (forward delay − return delay) / 2</code>
+        <h3>What the client does about it</h3>
+        <p>It keeps the last 8 samples and trusts the one with the smallest delay, because a short trip is least likely to have been stuck in a queue. This is the same idea as NTP's clock filter.</p>
+        <h3>What the network does about it</h3>
+        <p>Ryu watches port counters on the slow link. When it passes 2.5 Mbps, Ryu rewrites the flow rules so sync packets use the fast link. When it drops under 0.8 Mbps, they go back. Sync packets are also marked DSCP EF so the queue can serve them first.</p>
+      </section>
+      <section class="panel pad span-6">
+        <div class="ptitle"><h2>Try the maths</h2><span class="sub">Move the sliders and watch the offset estimate</span></div>
+        <div class="sliders">
+          <label><span>Client clock is ahead by</span><input type="range" id="sErr" min="-3" max="3" step="0.1" value="1.2"><output id="oErr"></output></label>
+          <label><span>Request delay (client to server)</span><input type="range" id="sFwd" min="1" max="100" step="1" value="10"><output id="oFwd"></output></label>
+          <label><span>Reply delay (server to client)</span><input type="range" id="sRet" min="1" max="100" step="1" value="10"><output id="oRet"></output></label>
+        </div>
+        <ul class="maths" id="calc" style="margin-top:16px"></ul>
+        <p class="note" id="calcNote"></p>
+      </section>
+    </div>
+  </section>
+
+  <p class="note" style="margin-top:22px">Mini NTP clients run as real processes on Mininet hosts. Clock error is exact because the server holds true time and each client's skew is simulated.</p>
+</div>
+
+<div class="toast" id="toast" role="status"><span id="toastText"></span></div>
+
+<script src="/static/vendor/chart.umd.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>
