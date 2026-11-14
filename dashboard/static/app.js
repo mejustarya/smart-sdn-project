@@ -494,6 +494,7 @@ function handle(ev) {
     case "route": onRoute(ev); break;
     case "traffic": onTraffic(ev); break;
     case "run_end": onRunEnd(ev); break;
+    case "report": if (ev.id > S.replayUntil) toast(ev.kind === "matrix" ? "Comparison report (PDF) is ready" : "Final report (PDF) is ready"); break;
     case "matrix": if (ev.phase === "done") { if (ev.id > S.replayUntil) toast(ev.aborted ? "Comparison stopped" : "Comparison finished"); loadResults(); } break;
   }
 }

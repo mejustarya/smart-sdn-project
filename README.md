@@ -90,6 +90,7 @@ to best-effort. The priority queue is a Linux `tc` queue, not an OpenFlow queue.
 | `mininet_experiment.py` | Runs the policy x scenario matrix on Mininet; writes CSVs and charts |
 | `client.py`, `server.py`, `common.py` | UDP time-sync client, server, protocol |
 | `bg_traffic.py`, `bg_sink.py`, `traffic.py` | Background traffic (constant and burst) and its receiver |
+| `report.py` | Builds `final_report.pdf` (NTP offset, delay, clock-error graphs, tables) from a results folder; runs automatically after every experiment |
 | `test_route_policy.py` | 8 unit tests for the controller's decision logic |
 | `scripts/setup_ubuntu.sh`, `start_controller.sh`, `show_flows.sh` | Setup, start Ryu, show flows and counters |
 | `run_sdn_experiment.py`, `sdn_emulator.py`, `emulator.py`, `run_experiment.py` | Optional pure-Python simulation (no Mininet). `mininet_experiment.py` reuses the summary and plotting code from `run_sdn_experiment.py` |
@@ -129,7 +130,8 @@ sudo /usr/bin/python3 mininet_experiment.py --ryu-manager ~/ryu39-venv/bin/ryu-m
 ```
 
 Results go to `results_mininet/`: `summary.csv`, `raw_samples.csv`, `route_events.csv`,
-`controller_samples.csv`, `overview.png`, `timeline.png`.
+`controller_samples.csv`, `overview.png`, `timeline.png` and **`final_report.pdf`** (see section 4b).
+Add `--no-report` to skip the PDF.
 
 Fallback flags: `--no-netem` (kernel lacks `sch_netem`: no link delay), `--datapath user`
 (kernel lacks the `openvswitch` module). Other flags: `--duration`, `--queue-pkts`, `--clients`.
@@ -180,6 +182,27 @@ bash scripts/setup_ubuntu.sh           # once, as your normal user (not sudo): M
 If Ryu is installed in a virtualenv, set `RYU_MANAGER=/path/to/ryu-manager` before starting. The server only listens on
 127.0.0.1 because it controls Mininet as root. Bundled libraries (Chart.js, IBM Plex Sans) are listed in
 `dashboard/static/THIRD_PARTY.txt`.
+
+## 4b. Final report (PDF)
+
+When an experiment finishes, `final_report.pdf` is written next to the CSVs. It contains:
+
+1. Setup, key findings (computed from the numbers) and the full summary table.
+2. Overview charts: clock error, round-trip delay and probe loss for every policy and scenario.
+3. NTP offset convergence at start-up: how each client's wrong clock is measured and removed.
+4. One page per scenario with, for every policy: the **NTP offset θ** of each probe, the **round-trip delay δ**
+   (lost probes marked), and the **true clock error** after filtering. Blue shading shows when Ryu had moved
+   sync traffic to the FAST path. Below it, the controller's view of the slow link and its thresholds.
+
+```bash
+python3 report.py results_mininet                    # rebuild from existing CSVs, no experiment needed
+python3 report.py results_sdn --out my_report.pdf    # works on the pure-Python simulation results too
+```
+
+In the dashboard, **Download final report (PDF)** appears in the *Live run* tab (single run) and the *Compare
+policies* tab (after *Compare all policies*). It is saved in `results_dashboard/last_run/` and
+`results_dashboard/last_matrix/`. Needs `python3-reportlab` (installed by `scripts/setup_ubuntu.sh`; otherwise
+`pip install reportlab pillow matplotlib`). `docs/sample_final_report.pdf` is an example built from the sandbox results.
 
 ## 5. Troubleshooting
 

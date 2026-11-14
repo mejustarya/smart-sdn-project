@@ -15,7 +15,7 @@ Policies
 Scenarios: baseline, low, moderate, high, extreme, burst.
 
 Outputs (results_mininet/): summary.csv, raw_samples.csv, route_events.csv,
-controller_samples.csv, overview.png, timeline.png
+controller_samples.csv, overview.png, timeline.png, final_report.pdf
 """
 import argparse
 import csv
@@ -137,6 +137,7 @@ def main():
                     help="OVS datapath (use 'user' if the kernel has no openvswitch module)")
     ap.add_argument("--no-netem", action="store_true", help="skip tc netem delay (kernel without sch_netem)")
     ap.add_argument("--out", default="results_mininet")
+    ap.add_argument("--no-report", action="store_true", help="do not build final_report.pdf at the end")
     a = ap.parse_args()
     if os.geteuid() != 0:
         sys.exit("run as root (sudo): Mininet needs it")
@@ -205,6 +206,17 @@ def main():
         write_csv(os.path.join(a.out, "route_events.csv"), events)
         write_csv(os.path.join(a.out, "controller_samples.csv"), ctrl)
         make_plots(summaries, data, sa, a.out)
+        if not a.no_report and summaries:
+            try:
+                from report import build_report
+                pdf = build_report(a.out, info={
+                    "Run length": f"{a.duration:g} s per run, probe every {a.interval:g} s",
+                    "Network": f"OVS datapath: {a.datapath}; link delay (netem): {'off' if a.no_netem else 'on'}",
+                    "Initial clock errors": ", ".join(f"{k:+.2f} s" for k in skews)},
+                    high=C.HIGH_MBPS, low=C.LOW_MBPS)
+                print("final report ->", pdf)
+            except Exception as e:                      # never lose the CSVs because of the report
+                print("(final report skipped:", e, ")")
         print("\ndone ->", a.out)
     finally:
         for p in servers:

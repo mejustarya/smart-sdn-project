@@ -6,7 +6,7 @@ set -e
 
 sudo apt update
 sudo apt install -y mininet openvswitch-switch iproute2 ethtool iputils-ping net-tools \
-                    python3 python3-venv python3-pip python3-matplotlib build-essential
+                    python3 python3-venv python3-pip python3-matplotlib python3-reportlab python3-pil build-essential
 sudo systemctl enable --now openvswitch-switch 2>/dev/null || sudo /usr/share/openvswitch/scripts/ovs-ctl start
 
 # Ryu lives in its own virtualenv (same path your SDN README uses). Python 3.9 is preferred;

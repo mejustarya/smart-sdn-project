@@ -78,6 +78,15 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, LAB.results())
             if path == "/api/events":
                 return self._sse(int(parse_qs(url.query).get("since", ["0"])[0]))
+            if path in ("/api/report/run.pdf", "/api/report/matrix.pdf"):
+                fp = LAB.report_path("matrix" if "matrix" in path else "run")
+                if not fp:
+                    return self._send(404, {"error": "no report yet: run an experiment first"})
+                with open(fp, "rb") as f:
+                    body = f.read()
+                name = "final_report_comparison.pdf" if "matrix" in path else "final_report_run.pdf"
+                return self._send(200, body, "application/pdf",
+                                  {"Content-Disposition": f'attachment; filename="{name}"'})
             if path == "/api/export/last_run.csv":
                 return self._csv(LAB.last_rows, "last_run.csv")
             if path == "/api/export/history.csv":

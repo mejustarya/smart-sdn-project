@@ -108,7 +108,8 @@
 
       <section class="panel pad span-7" aria-labelledby="h-tab">
         <div class="ptitle"><h2 id="h-tab">Latest probes</h2><span class="sub">Every row is one request and reply</span>
-          <a class="linkbtn right" href="/api/export/last_run.csv" download>Download this run as CSV</a></div>
+          <a class="linkbtn right" href="/api/export/last_run.csv" download>Download this run as CSV</a>
+          <a class="linkbtn" href="/api/report/run.pdf" download>Download final report (PDF)</a></div>
         <div class="scroll"><table class="data" id="probeTable"><thead><tr>
           <th>Time</th><th>Client</th><th class="num">Delay (ms)</th><th class="num">Offset estimate (ms)</th><th class="num">Error after step (ms)</th></tr></thead><tbody></tbody></table></div>
       </section>
@@ -120,7 +121,8 @@
     <div class="grid">
       <section class="panel pad span-12">
         <div class="ptitle"><h2>Four policies across six traffic levels</h2><span class="sub" id="cmpSource"></span>
-          <span class="right"><a class="linkbtn" href="/api/export/matrix.csv" download>Download comparison CSV</a></span></div>
+          <span class="right"><a class="linkbtn" href="/api/export/matrix.csv" download>Download comparison CSV</a>
+            <a class="linkbtn" href="/api/report/matrix.pdf" download>Download final report (PDF)</a></span></div>
         <div class="legend" id="legCmp"></div>
         <p class="note" style="margin:0 0 10px">Static keeps sync traffic on the slow path. Dynamic lets Ryu move it to the fast path when the slow link fills up. Priority puts sync packets first in the queue.</p>
       </section>

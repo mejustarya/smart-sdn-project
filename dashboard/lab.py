@@ -41,7 +41,10 @@ import sdn_config as C                                               # noqa: E40
 from run_sdn_experiment import POLICIES, pname, summarize, write_csv  # noqa: E402
 
 PY = sys.executable
+REPORT_RUN_DIR = None   # set below, next to RESULTS_DIR
 RESULTS_DIR = os.path.join(ROOT, "results_dashboard")
+REPORT_RUN_DIR = os.path.join(RESULTS_DIR, "last_run")
+REPORT_MATRIX_DIR = os.path.join(RESULTS_DIR, "last_matrix")
 SAMPLE_SUMMARY = os.path.join(ROOT, "results_mininet_sandbox", "summary.csv")
 SCENARIOS = ["baseline", "low", "moderate", "high", "extreme", "burst"]
 LEVEL_OF = {"low": "low", "moderate": "moderate", "high": "high", "extreme": "extreme", "burst": "high"}
@@ -188,7 +191,7 @@ class Lab:
         self.run_meta, self.run_start_id = None, 0
         self.matrix_state = None
         self.history, self.matrix_result = [], None
-        self.last_rows = []
+        self.last_rows, self.last_events, self.last_ctrl = [], [], []
         os.makedirs(RESULTS_DIR, exist_ok=True)
         self._load_history()
         self.worker = threading.Thread(target=self._worker, daemon=True)
@@ -425,13 +428,17 @@ class Lab:
         summary = self._do_run(p, matrix=None)
         if summary:
             self._remember(summary)
+            tag = {"policy": summary["policy"], "scenario": summary["scenario"]}
+            self._build_report(REPORT_RUN_DIR, "run", [summary], self.last_rows,
+                               [dict(tag, **e) for e in self.last_events],
+                               [dict(tag, **c) for c in self.last_ctrl], self._report_info(summary))
         self.set_state("ready", "Ready to run")
 
     def _run_matrix(self, p):
         pols = p.get("policies") or [pname(a, b) for a, b in POLICIES]
         scens = p.get("scenarios") or SCENARIOS
         todo = [(a, b, s) for s in scens for (a, b) in POLICIES if pname(a, b) in pols]
-        n, results, rows_all = len(todo), [], []
+        n, results, rows_all, ev_all, ctrl_all = len(todo), [], [], [], []
         self.matrix_state = {"i": 0, "n": n, "running": True}
         self.set_state("running", f"Comparison 0 of {n}")
         self.bus.emit("matrix", phase="start", n=n)
@@ -446,6 +453,8 @@ class Lab:
             if summary:
                 results.append(summary)
                 rows_all += self.last_rows
+                ev_all += [dict(policy=summary["policy"], scenario=summary["scenario"], **e) for e in self.last_events]
+                ctrl_all += [dict(policy=summary["policy"], scenario=summary["scenario"], **c) for c in self.last_ctrl]
                 self._remember(summary)
         self.matrix_state = None
         if results:
@@ -454,9 +463,39 @@ class Lab:
             write_csv(os.path.join(RESULTS_DIR, "raw_samples.csv"), rows_all)
             with open(os.path.join(RESULTS_DIR, "last_matrix.json"), "w") as f:
                 json.dump(clean(self.matrix_result), f)
+            self._build_report(REPORT_MATRIX_DIR, "matrix", results, rows_all, ev_all, ctrl_all,
+                               self._report_info(results[-1]))
         self.bus.emit("matrix", phase="done", n=n, done=len(results),
                       aborted=self.abort.is_set(), result=self.matrix_result)
         self.set_state("ready", "Ready to run")
+
+    def _build_report(self, directory, kind, summaries, rows, events, ctrl, info):
+        """Write the run's CSVs and build final_report.pdf next to them. Never raises."""
+        try:
+            from report import build_report
+            os.makedirs(directory, exist_ok=True)
+            write_csv(os.path.join(directory, "summary.csv"), summaries)
+            write_csv(os.path.join(directory, "raw_samples.csv"), rows)
+            write_csv(os.path.join(directory, "route_events.csv"), events)
+            write_csv(os.path.join(directory, "controller_samples.csv"), ctrl)
+            pdf = build_report(directory, info=info, high=C.HIGH_MBPS, low=C.LOW_MBPS)
+            self.bus.emit("report", kind=kind, ready=True, when=time.time())
+            self.log("Final report (PDF) is ready: use the Download report button", "ok")
+            return pdf
+        except Exception as e:  # noqa: BLE001
+            traceback.print_exc()
+            self.log(f"Could not build the PDF report: {e}", "warn")
+            return None
+
+    def _report_info(self, s):
+        return {"Run length": f"{s.get('duration', '?')} s per run",
+                "Network": f"OVS datapath: {self.datapath}; link delay (netem): {'on' if self.netem else 'off'}",
+                "Clients": s.get("clients", "?")}
+
+    def report_path(self, kind):
+        d = REPORT_MATRIX_DIR if kind == "matrix" else REPORT_RUN_DIR
+        p = os.path.join(d, "final_report.pdf")
+        return p if os.path.isfile(p) else None
 
     def _remember(self, summary):
         self.history.append(summary)
@@ -641,6 +680,10 @@ class Lab:
         with rows_lock:
             rows_copy = sorted(rows, key=lambda r: r["t"])
         self.last_rows = rows_copy
+        self.last_events = events
+        self.last_ctrl = [{"t": float(c["t"]) - t0, "slow_mbps": float(c["slow_mbps"]), "path": c["path"]}
+                          for c in read_csv_rows(C.SAMPLES_CSV)
+                          if c.get("t") and t0 <= float(c["t"]) <= t0 + total + 2]
         summary = None
         if rows_copy:
             lost = sum(r["lost"] for r in rows_copy)
