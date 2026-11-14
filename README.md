@@ -135,6 +135,7 @@ to best-effort. The priority queue is a Linux `tc` queue, not an OpenFlow queue.
 ### 5.1 One-time setup
 
 ```bash
+cd ~/time-sync-project
 bash scripts/setup_ubuntu.sh
 ```
 
