@@ -31,19 +31,73 @@ how much congestion hurts time synchronization and how well each defence works.
 > Build a simplified time-synchronization application using UDP sockets where multiple clients
 > synchronize their clocks with a reference server.
 
-| Expectation | How it is done | Where |
-|---|---|---|
-| **UDP timestamp exchange** | Client sends a request with `t1`; server stamps `t2` (receive) and `t3` (send); client stamps `t4` on arrival | `client.py`, `server.py` |
-| **Round-trip delay** | `delay = (t4 - t1) - (t3 - t2)` | `client.py` |
-| **Clock offset** | `offset = ((t2 - t1) + (t3 - t4)) / 2`; the client steps its clock using the lowest-delay of its last 8 samples | `client.py` |
-| **Multiple clients** | Clients run on h1, h2, h3 at the same time, each starting 0.8 to 2.9 s wrong; the server is one UDP socket | `mininet_experiment.py` |
-| **Prioritize sync traffic** | (a) Ryu rewrites the sync flow to use the FAST path when the slow link is busy; (b) Ryu marks sync packets DSCP EF and a Linux `tc` HTB queue serves EF first | `ryu_controller.py`, `mininet_topology.py` |
-| **Controlled network delay** | `tc netem` adds 50 ms (slow) and 5 ms (fast) per direction; `tc htb` limits the rate to 5 and 20 Mbps; finite queues | `mininet_topology.py` |
-| **Measure sync error** | Each client starts with a known wrong clock and the server holds true time, so the real error is exactly `abs(client offset)` | `client.py` CSV output |
-| **Compare under congestion** | 4 policies x 6 traffic scenarios = 24 runs, with CSVs and charts | `mininet_experiment.py` |
+# Network Time Synchronization under Congestion
 
-Metrics recorded: RTT (mean, p95), jitter, timeout-based loss, clock error (per probe and after
-filtering), slow-link throughput, route changes, first reroute time, time spent on the FAST path.
+Multiple clients sync their clocks with a reference server over UDP. The network runs on Mininet and Open vSwitch with a Ryu SDN controller. The project measures how congestion hurts time sync and how well each defence works.
+
+## How the project meets each requirement
+
+| Requirement | How it is implemented | Files |
+|---|---|---|
+| **UDP timestamp exchange** | The client sends a request with send time `t1`. The server adds its receive time `t2` and send time `t3` to the reply. The client records `t4` when the reply arrives. | `client.py`, `server.py` |
+| **Round-trip delay** | `delay = (t4 - t1) - (t3 - t2)` | `client.py` |
+| **Clock offset** | `offset = ((t2 - t1) + (t3 - t4)) / 2`. The client corrects its clock using the lowest-delay sample from its last 8 samples, because that sample was least affected by queueing. | `client.py` |
+| **Multiple clients** | One UDP server socket serves all clients. h1, h2 and h3 run together, each starting with a different wrong clock (0.8 to 2.9 s off). | `server.py`, `mininet_experiment.py` |
+| **Prioritize sync traffic** | Sync packets are marked DSCP EF. The Ryu controller moves sync traffic from the slow link to the fast link when the slow link is busy. A Linux `tc` priority queue serves EF packets first. | `ryu_controller.py`, `route_policy.py`, `mininet_topology.py` |
+| **Controlled network delay** | `tc netem` adds delay and `tc htb` limits the rate. Slow link: 5 Mbps, 50 ms. Fast link: 20 Mbps, 5 ms. Queues have a fixed size. | `mininet_topology.py`, `sdn_config.py` |
+| **Measure sync error** | The server holds the true time and each client starts with a known wrong offset. The real error is exactly the client's remaining offset, so it is known for every probe. | `client.py` |
+| **Compare under congestion** | 4 policies x 6 traffic scenarios = 24 runs. Results are saved as CSV files and charts. | `mininet_experiment.py`, `report.py` |
+
+## How it works
+
+### 1. Timestamp exchange, delay and offset
+- The client sends a UDP request carrying `t1`.
+- The server stamps `t2` on receive and `t3` on send, then replies.
+- The client stamps `t4` on arrival and calculates delay and offset.
+- The offset is exact only if the forward and return delays are equal. With unequal delays, the error is `(d_forward - d_return) / 2`.
+
+### 2. Multiple clients and priority
+- The server is stateless per client, so any number of clients can use one socket.
+- Sync packets use UDP port 5005 and are marked DSCP EF.
+- Ryu moves sync traffic to the FAST link when the slow-link rate is 2.5 Mbps or more. It moves it back when the rate is 0.8 Mbps or less. There is at least 4 s between route changes.
+- Background traffic (UDP port 6000) stays on the SLOW link.
+
+### 3. Controlled delay and congestion
+- Three background UDP senders (h5, h6, h7) create these loads:
+
+| Level | Load on 5 Mbps slow link |
+|---|---|
+| Low | 1.5 Mbps |
+| Moderate | 3 Mbps |
+| High | 6 Mbps |
+| Extreme | 9 Mbps |
+| Burst | On/off traffic |
+
+- Congestion builds a queue that delays requests but not replies. This makes the offset wrong, and the queue can also drop sync packets.
+
+### 4. Policies compared
+
+| Policy | What it does |
+|---|---|
+| `static` | Sync stays on SLOW, one shared FIFO queue |
+| `dynamic` | Ryu moves sync to FAST when the slow link is busy |
+| `static+prio` | Stays on SLOW, but EF packets use a strict-priority queue |
+| `dynamic+prio` | Both rerouting and priority queue |
+
+## Results (high congestion)
+
+| Policy | Mean synced error | Mean RTT |
+|---|---|---|
+| static | ~42 ms | ~205 ms |
+| dynamic | ~0.5 ms | ~26 ms |
+| static+prio | ~0.5 ms | ~104 ms |
+| dynamic+prio | ~0.18 ms | ~21 ms |
+| baseline (no congestion) | ~0.3 ms | ~104 ms |
+
+**Takeaway:** Without any protection, congestion pushes the sync error to tens of milliseconds. Priority queueing or rerouting brings it back near the baseline. Using both gives the lowest error.
+
+## Metrics recorded
+RTT (mean and p95), jitter, timeout-based loss, clock error (per probe and after filtering), slow-link throughput, route changes, first reroute time, and time spent on the FAST path.
 
 ## 2. System architecture and design
 
