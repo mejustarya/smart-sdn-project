@@ -46,7 +46,7 @@ Multiple clients sync their clocks with a reference server over UDP. The network
 | **Prioritize sync traffic** | Sync packets are marked Priority. The Ryu controller moves sync traffic from the slow link to the fast link when the slow link is busy. A Linux `tc` priority queue serves EF packets first. | `ryu_controller.py`, `route_policy.py`, `mininet_topology.py` |
 | **Controlled network delay** | `tc netem` adds delay and `tc htb` limits the rate. Slow link: 5 Mbps, 50 ms. Fast link: 20 Mbps, 5 ms. Queues have a fixed size. | `mininet_topology.py`, `sdn_config.py` |
 | **Measure sync error** | The server holds the true time and each client starts with a known wrong offset. The real error is exactly the client's remaining offset, so it is known for every probe. | `client.py` |
-| **Compare under congestion** | 4 policies x 6 traffic scenarios = 24 runs. Results are saved as CSV files and charts. | `mininet_experiment.py`, `report.py` |
+| **Compare under congestion** | 4 policies x 6 traffic scenarios = 24 runs. Results are saved as CSV files and final report pdf. | `mininet_experiment.py`, `report.py` |
 
 ## How it works
 
