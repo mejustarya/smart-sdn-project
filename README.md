@@ -59,7 +59,7 @@ Multiple clients sync their clocks with a reference server over UDP. The network
 ### 2. Multiple clients and priority
 - The server is stateless per client, so any number of clients can use one socket.
 - Sync packets use UDP port 5005 and are marked DSCP EF.
-- Ryu moves sync traffic to the FAST link when the slow-link rate is 2.5 Mbps or more. It moves it back when the rate is 0.8 Mbps or less. There is at least 4 s between route changes.
+- Ryu moves sync traffic to the FAST link when the slow-link rate is 2.5 Mbps or more. It moves it back when the rate is 0.8 Mbps or less. 
 - Background traffic (UDP port 6000) stays on the SLOW link.
 
 ### 3. Controlled delay and congestion
