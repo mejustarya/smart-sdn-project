@@ -43,7 +43,7 @@ Multiple clients sync their clocks with a reference server over UDP. The network
 | **Round-trip delay** | `delay = (t4 - t1) - (t3 - t2)` | `client.py` |
 | **Clock offset** | `offset = ((t2 - t1) + (t3 - t4)) / 2`. The client corrects its clock using the lowest-delay sample from its last 8 samples, because that sample was least affected by queueing. | `client.py` |
 | **Multiple clients** | One UDP server socket serves all clients. h1, h2 and h3 run together, each starting with a different wrong clock (0.8 to 2.9 s off). | `server.py`, `mininet_experiment.py` |
-| **Prioritize sync traffic** | Sync packets are marked DSCP EF. The Ryu controller moves sync traffic from the slow link to the fast link when the slow link is busy. A Linux `tc` priority queue serves EF packets first. | `ryu_controller.py`, `route_policy.py`, `mininet_topology.py` |
+| **Prioritize sync traffic** | Sync packets are marked Priority. The Ryu controller moves sync traffic from the slow link to the fast link when the slow link is busy. A Linux `tc` priority queue serves EF packets first. | `ryu_controller.py`, `route_policy.py`, `mininet_topology.py` |
 | **Controlled network delay** | `tc netem` adds delay and `tc htb` limits the rate. Slow link: 5 Mbps, 50 ms. Fast link: 20 Mbps, 5 ms. Queues have a fixed size. | `mininet_topology.py`, `sdn_config.py` |
 | **Measure sync error** | The server holds the true time and each client starts with a known wrong offset. The real error is exactly the client's remaining offset, so it is known for every probe. | `client.py` |
 | **Compare under congestion** | 4 policies x 6 traffic scenarios = 24 runs. Results are saved as CSV files and charts. | `mininet_experiment.py`, `report.py` |
